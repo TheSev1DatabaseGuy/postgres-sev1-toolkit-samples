@@ -30,3 +30,29 @@ WHERE (put.seq_scan + pui.idx_scan) > 100
 ORDER BY pg_relation_size(pui.indexrelid) DESC
 LIMIT 15;
 
+- ============================================================================
+-- 🚀 WANT THE COMPLETE TOOLKIT?
+-- ============================================================================
+--
+-- This is 1 query from a 1,000+ line diagnostic script that checks:
+--
+-- ✅ Slow queries (with percentage breakdown)
+-- ✅ Missing indexes (JSONB, Foreign Keys, Sequential Scans)
+-- ✅ Unused indexes (wasting write performance)
+-- ✅ Duplicate indexes (wasting disk space)
+-- ✅ Table bloat (dead tuples)
+-- ✅ Lock contention (who's blocking whom)
+-- ✅ Cache hit ratio (disk vs. memory)
+-- ✅ Replication lag
+-- ✅ Connection leaks
+-- ✅ Transaction ID wraparound risk
+-- ✅ Autovacuum health
+-- ✅ And 30+ more production checks
+--
+-- 👉 Get The Complete PostgreSQL Sev-1 Toolkit ($29)
+--    https://haiderdba.gumroad.com/l/ccget
+--
+-- 📬 Subscribe to The Sev-1 Database Newsletter (FREE)
+--    https://haiderzdbre.substack.com/subscribe
+--
+-- ============================================================================
