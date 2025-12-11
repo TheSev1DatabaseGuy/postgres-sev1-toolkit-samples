@@ -1,0 +1,32 @@
+-- Unused indexes (wasting space and slowing writes)
+SELECT
+    '🔴 Unused Indexes (Consider Dropping)' as alert_type,
+    pui.schemaname || '.' || pui.relname as table_name,
+    pui.indexrelname as index_name,
+    pg_size_pretty(pg_relation_size(pui.indexrelid)) as index_size,
+    pui.idx_scan as times_used,
+    'DROP INDEX CONCURRENTLY ' || pui.schemaname || '.' || pui.indexrelname || ';' as drop_command
+FROM pg_stat_user_indexes pui
+WHERE pui.idx_scan = 0
+  AND pui.indexrelname NOT LIKE 'pg_toast%'
+  AND pg_relation_size(pui.indexrelid) > 1024 * 1024  -- > 1MB
+ORDER BY pg_relation_size(pui.indexrelid) DESC
+LIMIT 15;
+
+
+-- Low-usage indexes
+SELECT
+    '🟡 Low-Usage Indexes' as alert_type,
+    pui.schemaname || '.' || pui.relname as table_name,
+    pui.indexrelname as index_name,
+    pg_size_pretty(pg_relation_size(pui.indexrelid)) as index_size,
+    pui.idx_scan as times_used,
+    ROUND(100.0 * pui.idx_scan / NULLIF(put.seq_scan + pui.idx_scan, 0), 2) as index_usage_pct
+FROM pg_stat_user_indexes pui
+JOIN pg_stat_user_tables put ON pui.schemaname = put.schemaname AND pui.relname = put.relname
+WHERE (put.seq_scan + pui.idx_scan) > 100
+  AND pui.idx_scan < 100
+  AND pui.idx_scan > 0
+ORDER BY pg_relation_size(pui.indexrelid) DESC
+LIMIT 15;
+
