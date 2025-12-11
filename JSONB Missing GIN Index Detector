@@ -1,0 +1,91 @@
+JSONB Missing GIN Index Detector
+-- ============================================================================
+-- 
+-- FROM: The PostgreSQL Sev-1 Toolkit
+-- AUTHOR: Haider Z (The Sev-1 Database Newsletter)
+-- 
+-- PROBLEM: Using JSONB without GIN indexes = Full table scans on every query
+-- 
+-- This query detects JSONB columns that are missing GIN indexes—one of the
+-- most common performance bottlenecks when migrating from MongoDB to PostgreSQL.
+--
+-- ⚠️ If this returns results, you're scanning entire tables for JSON queries.
+-- 
+-- ============================================================================
+
+-- JSONB Columns Missing GIN Indexes (The "MongoDB Trap")
+
+SELECT 
+    '🔴 JSONB MISSING GIN INDEX' as alert_type,
+    n.nspname || '.' || c.relname as table_name,
+    a.attname as jsonb_column,
+    pg_size_pretty(pg_relation_size(c.oid)) as table_size,
+    'CREATE INDEX CONCURRENTLY ON ' || n.nspname || '.' || c.relname 
+        || ' USING gin (' || a.attname || ' jsonb_path_ops);' as fix_command
+FROM pg_attribute a
+JOIN pg_class c ON a.attrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE a.atttypid = 'jsonb'::regtype
+  AND c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_index i
+    JOIN pg_class ic ON ic.oid = i.indexrelid
+    JOIN pg_am am ON am.oid = ic.relam
+    WHERE i.indrelid = c.oid
+      AND a.attnum = ANY(i.indkey)
+      AND am.amname = 'gin'
+);
+
+-- ============================================================================
+-- 📊 WHAT THE OUTPUT MEANS
+-- ============================================================================
+--
+-- If this returns rows:
+-- ✅ table_name = The table with unindexed JSONB
+-- ✅ jsonb_column = The column that needs an index
+-- ✅ table_size = How big the table is (larger = worse performance)
+-- ✅ fix_command = Copy-paste this to fix it
+--
+-- If this returns NO rows:
+-- ✅ Congratulations! All your JSONB columns are properly indexed.
+--
+-- ============================================================================
+-- 💡 WHY THIS MATTERS
+-- ============================================================================
+--
+-- Without a GIN index, queries like:
+--   SELECT * FROM users WHERE data @> '{"status": "active"}';
+--
+-- Will scan THE ENTIRE TABLE row-by-row.
+--
+-- With a GIN index, PostgreSQL can jump directly to matching rows.
+--
+-- Performance difference: 100x - 1000x faster.
+--
+-- ============================================================================
+-- 🚀 WANT THE COMPLETE TOOLKIT?
+-- ============================================================================
+--
+-- This is 1 query from a 1,000+ line diagnostic script that checks:
+--
+-- ✅ Slow queries (with percentage breakdown)
+-- ✅ Missing indexes (JSONB, Foreign Keys, Sequential Scans)
+-- ✅ Unused indexes (wasting write performance)
+-- ✅ Duplicate indexes (wasting disk space)
+-- ✅ Table bloat (dead tuples)
+-- ✅ Lock contention (who's blocking whom)
+-- ✅ Cache hit ratio (disk vs. memory)
+-- ✅ Replication lag
+-- ✅ Connection leaks
+-- ✅ Transaction ID wraparound risk
+-- ✅ Autovacuum health
+-- ✅ And 30+ more production checks
+--
+-- 👉 Get The Complete PostgreSQL Sev-1 Toolkit ($29)
+--    https://haiderdba.gumroad.com/l/ccget
+--
+-- 📬 Subscribe to The Sev-1 Database Newsletter (FREE)
+--    https://haiderzdbre.substack.com/subscribe
+--
+-- ============================================================================
