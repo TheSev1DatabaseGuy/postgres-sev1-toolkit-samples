@@ -1,0 +1,43 @@
+
+-- ============================================================================
+-- From: The Sev-1 Database Newsletter
+-- Full Toolkit (41+ queries): https://haiderdba.gumroad.com/l/ccget
+--
+-- This is a BASIC bloat check. The full script includes:
+-- - Autovacuum configuration analysis
+-- - Index bloat detection with REINDEX commands
+-- - pg_repack recommendations
+-- - Transaction ID wraparound warnings
+-- - And 40+ more production checks
+-- ============================================================================
+
+-- QUERY 1: Find tables with high dead tuple percentage
+-- If dead_pct > 20%, you have bloat problems
+SELECT
+    schemaname || '.' || relname as table_name,
+    n_live_tup as live_rows,
+    n_dead_tup as dead_rows,
+    ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as dead_pct,
+    last_autovacuum::date as last_autovacuum
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 10000
+ORDER BY n_dead_tup DESC
+LIMIT 10;
+
+-- QUERY 2: Tables that have never been vacuumed
+SELECT
+    schemaname || '.' || relname as table_name,
+    n_dead_tup as dead_rows,
+    'VACUUM ANALYZE ' || schemaname || '.' || relname || ';' as fix
+FROM pg_stat_user_tables
+WHERE last_vacuum IS NULL 
+  AND last_autovacuum IS NULL
+  AND n_live_tup > 1000
+LIMIT 5;
+
+-- ============================================================================
+-- Want severity indicators, auto-generated commands, and 40+ more checks?
+-- Get the full script: https://thesev1database.gumroad.com/l/postgres-health-check
+--
+-- Subscribe for free PostgreSQL tips: https://haiderzdbre.substack.com/subscribe
+-- ============================================================================
